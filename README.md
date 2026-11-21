@@ -10,7 +10,7 @@ O Campus Desk é um sistema de suporte técnico voltado para o gerenciamento de 
 
 ## Links
 
-- Aplicação publicada: (https://white-glitter-fce5.lorenna-pires00.workers.dev/)]
+- Aplicação publicada: https://white-glitter-fce5.lorenna-pires00.workers.dev/
 - Repositório: https://github.com/lorennapires/CampusDesk_API
 
 ## Tecnologias
