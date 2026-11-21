@@ -1,52 +1,31 @@
-# Campus Desk — preencher antes da entrega
+# Campus Desk
 
 ## Integrantes
 
-- Nome e identificação: PREENCHER
-- Nome e identificação: PREENCHER
+- Nome e identificação: Lorenna Macêdo Ramiro Pires
 
 ## Objetivo
 
-PREENCHER: descreva a central de chamados e o propósito da API.
+O Campus Desk é um sistema de suporte técnico voltado para o gerenciamento de chamados internos de um campus. A API desenvolvida em Node.js e Express fornece os endpoints responsáveis por registrar, consultar, atualizar e excluir solicitações, além de permitir buscas por texto, filtros combinados, ordenação e o acompanhamento de indicadores em tempo real pela interface web.
 
 ## Links
 
-- Aplicação publicada: PREENCHER
-- API (URL pública + /api): PREENCHER
-- Repositório: PREENCHER
+- Aplicação publicada: (https://white-glitter-fce5.lorenna-pires00.workers.dev/)]
+- API (URL pública + /api): https://strengths-sender-semi-gasoline.trycloudflare.com/api
+- Repositório: https://github.com/lorennapires/CampusDesk_API
 
 ## Tecnologias
 
-Node.js, Express, JavaScript; frontend fornecido em React/Vite. PREENCHER versões efetivamente utilizadas.
+- **Backend:** Node.js, Express (`5.1.0`), CORS (`2.8.5`), Nodemon (`3.1.10`) e JavaScript.
+- **Frontend:** React e Vite.
 
 ## Instalação e execução
 
-PREENCHER requisitos e comandos testados para instalar frontend/backend, executar em desenvolvimento e executar o build com npm. Esclarecer que a raiz contém frontend e backend.
+A estrutura do projeto possui os diretórios `backend/` e `frontend/`. É necessário ter o Node.js e o npm instalados.
 
-## Rotas e exemplos
+### Backend (API)
 
-PREENCHER tabela das seis rotas, parâmetros, corpos, respostas e códigos HTTP. Incluir ao menos um exemplo de sucesso e de erro.
-
-## Regras de negócio
-
-PREENCHER validações, exclusão apenas de resolvidos, filtros, ordenação, resumo.
-
-## Organização do código
-
-PREENCHER onde estão arrays, contadores, validações e rotas. Indicar que frontend/src/service.js concentra as chamadas HTTP.
-
-## Testes realizados
-
-PREENCHER tabela com cenário, resultado esperado e resultado observado. Registrar testes com Postman/Insomnia e pelo endereço público. Não declarar testes que não foram executados.
-
-## Publicação
-
-PREENCHER serviço utilizado, comandos para iniciar o backend no Codespaces, porta pública, configuração de config.js e publicação do build do frontend.
-
-## Limitações
-
-Dados em memória se perdem ao reiniciar. Aplicação sem autenticação, para dados fictícios de aula. Backend disponível somente com Codespace e processo Node ativos. PREENCHER outras limitações e funcionalidades pendentes.
-
-## Contribuições
-
-PREENCHER participação de cada integrante e decisões de implementação.
+```bash
+cd backend
+npm install
+npm start

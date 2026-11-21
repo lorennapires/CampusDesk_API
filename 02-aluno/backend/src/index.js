@@ -2,213 +2,161 @@ const express = require('express');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 3333;
+const port = process.env.PORT || 3333;
 
 app.use(cors());
 app.use(express.json());
 
-// Armazenamento em memória e contador de IDs
-let chamados = [];
-let proximoId = 1;
+let tickets = [];
+let nextId = 1;
 
-// Valores válidos permitidos pelo domínio
-const CATEGORIAS_VALIDAS = ['hardware', 'software', 'rede', 'acesso', 'outros'];
-const PRIORIDADES_VALIDAS = ['baixa', 'media', 'alta', 'urgente'];
-const SITUACOES_VALIDAS = ['aberto', 'em_andamento', 'resolvido'];
+const categorias = ['hardware', 'software', 'rede'];
+const prioridades = ['baixa', 'media', 'alta'];
+const situacoes = ['aberto', 'em_atendimento', 'resolvido'];
+const pesoPrioridade = { baixa: 1, media: 2, alta: 3 };
 
-// Mapa de pesos para ordenação por prioridade
-const PESO_PRIORIDADE = {
-  baixa: 1,
-  media: 2,
-  alta: 3,
-  urgente: 4,
-};
-
-// Função auxiliar de validação
-function validarDadosChamado({ titulo, descricao, solicitante, categoria, prioridade, situacao }, isAtualizacao = false) {
-  const erros = [];
-
-  if (!titulo || typeof titulo !== 'string' || titulo.trim().length < 3) {
-    erros.push('O título é obrigatório e deve ter pelo menos 3 caracteres.');
+function validarTicket(dados, checarSituacao = false) {
+  if (!dados.title || dados.title.trim().length < 3) {
+    return 'O título deve ter pelo menos 3 caracteres.';
   }
-
-  if (!descricao || typeof descricao !== 'string' || descricao.trim().length < 5) {
-    erros.push('A descrição é obrigatória e deve ter pelo menos 5 caracteres.');
+  if (!dados.description || dados.description.trim().length < 5) {
+    return 'A descrição deve ter pelo menos 5 caracteres.';
   }
-
-  if (!solicitante || typeof solicitante !== 'string' || solicitante.trim().length < 2) {
-    erros.push('O solicitante é obrigatório.');
+  if (!dados.requester || dados.requester.trim().length < 2) {
+    return 'O solicitante é obrigatório.';
   }
-
-  if (!categoria || !CATEGORIAS_VALIDAS.includes(categoria.toLowerCase())) {
-    erros.push(`Categoria inválida. Valores aceitos: ${CATEGORIAS_VALIDAS.join(', ')}.`);
+  if (!categorias.includes(dados.category)) {
+    return 'Categoria inválida.';
   }
-
-  if (!prioridade || !PRIORIDADES_VALIDAS.includes(prioridade.toLowerCase())) {
-    erros.push(`Prioridade inválida. Valores aceitos: ${PRIORIDADES_VALIDAS.join(', ')}.`);
+  if (!prioridades.includes(dados.priority)) {
+    return 'Prioridade inválida.';
   }
-
-  if (isAtualizacao) {
-    if (!situacao || !SITUACOES_VALIDAS.includes(situacao.toLowerCase())) {
-      erros.push(`Situação inválida. Valores aceitos: ${SITUACOES_VALIDAS.join(', ')}.`);
-    }
+  if (checarSituacao && !situacoes.includes(dados.status)) {
+    return 'Situação inválida.';
   }
-
-  return erros;
+  return null;
 }
 
-// 1. ROTA DE RESUMO / INDICADORES (Geralmente GET /chamados/resumo ou GET /resumo)
-// Nota: Deve vir ANTES da rota GET /chamados/:id para não confundir "resumo" com um ID
-app.get('/chamados/resumo', (req, res) => {
-  const total = chamados.length;
-  const aberto = chamados.filter((c) => c.situacao === 'aberto').length;
-  const em_andamento = chamados.filter((c) => c.situacao === 'em_andamento').length;
-  const resolvido = chamados.filter((c) => c.situacao === 'resolvido').length;
-
-  return res.status(200).json({
-    total,
-    aberto,
-    em_andamento,
-    resolvido,
+// Resumo geral
+app.get('/api/summary', (req, res) => {
+  res.json({
+    total: tickets.length,
+    aberto: tickets.filter((t) => t.status === 'aberto').length,
+    em_atendimento: tickets.filter((t) => t.status === 'em_atendimento').length,
+    resolvido: tickets.filter((t) => t.status === 'resolvido').length,
   });
 });
 
-// 2. LISTAR CHAMADOS COM BUSCA, FILTROS E ORDENAÇÃO (GET /chamados)
-app.get('/chamados', (req, res) => {
-  const { busca, situacao, categoria, prioridade, ordenar } = req.query;
+// Listar com busca, filtros e ordenação
+app.get('/api/tickets', (req, res) => {
+  const { search, status, category, priority, sort } = req.query;
+  let lista = [...tickets];
 
-  let resultado = [...chamados];
-
-  // Busca por título ou solicitante (case-insensitive)
-  if (busca && busca.trim() !== '') {
-    const termo = busca.trim().toLowerCase();
-    resultado = resultado.filter(
-      (c) =>
-        c.titulo.toLowerCase().includes(termo) ||
-        c.solicitante.toLowerCase().includes(termo)
+  if (search) {
+    const termo = search.toLowerCase();
+    lista = lista.filter(
+      (t) =>
+        t.title.toLowerCase().includes(termo) ||
+        t.requester.toLowerCase().includes(termo)
     );
   }
 
-  // Filtros combinados
-  if (situacao && situacao !== 'todas') {
-    resultado = resultado.filter((c) => c.situacao === situacao.toLowerCase());
+  if (status) {
+    lista = lista.filter((t) => t.status === status);
   }
 
-  if (categoria && categoria !== 'todas') {
-    resultado = resultado.filter((c) => c.categoria === categoria.toLowerCase());
+  if (category) {
+    lista = lista.filter((t) => t.category === category);
   }
 
-  if (prioridade && prioridade !== 'todas') {
-    resultado = resultado.filter((c) => c.prioridade === prioridade.toLowerCase());
+  if (priority) {
+    lista = lista.filter((t) => t.priority === priority);
   }
 
-  // Ordenação por data ou prioridade
-  if (ordenar === 'prioridade') {
-    resultado.sort((a, b) => (PESO_PRIORIDADE[b.prioridade] || 0) - (PESO_PRIORIDADE[a.prioridade] || 0));
-  } else if (ordenar === 'data_asc') {
-    resultado.sort((a, b) => new Date(a.criadoEm) - new Date(b.criadoEm));
+  if (sort === 'priority') {
+    lista.sort((a, b) => pesoPrioridade[b.priority] - pesoPrioridade[a.priority]);
   } else {
-    // Padrão: mais recentes primeiro
-    resultado.sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm));
+    lista.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
-  return res.status(200).json(resultado);
+  res.json(lista);
 });
 
-// 3. CONSULTAR CHAMADO INDIVIDUALMENTE (GET /chamados/:id)
-app.get('/chamados/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const chamado = chamados.find((c) => c.id === id);
+// Consultar chamado por ID
+app.get('/api/tickets/:id', (req, res) => {
+  const ticket = tickets.find((t) => t.id === Number(req.params.id));
 
-  if (!chamado) {
-    return res.status(404).json({ erro: 'Chamado não encontrado.' });
+  if (!ticket) {
+    return res.status(404).json({ message: 'Chamado não encontrado.' });
   }
 
-  return res.status(200).json(chamado);
+  res.json(ticket);
 });
 
-// 4. CADASTRAR NOVO CHAMADO (POST /chamados)
-app.post('/chamados', (req, res) => {
-  const { titulo, descricao, solicitante, categoria, prioridade } = req.body;
-
-  const erros = validarDadosChamado({ titulo, descricao, solicitante, categoria, prioridade }, false);
-  if (erros.length > 0) {
-    return res.status(400).json({ erro: 'Dados inválidos.', detalhes: erros });
+// Criar chamado
+app.post('/api/tickets', (req, res) => {
+  const erro = validarTicket(req.body);
+  if (erro) {
+    return res.status(400).json({ message: erro });
   }
 
-  const novoChamado = {
-    id: proximoId++,
-    titulo: titulo.trim(),
-    descricao: descricao.trim(),
-    solicitante: solicitante.trim(),
-    categoria: categoria.toLowerCase(),
-    prioridade: prioridade.toLowerCase(),
-    situacao: 'aberto', // Regra: todo novo chamado inicia como "aberto"
-    criadoEm: new Date().toISOString(),
+  const novoTicket = {
+    id: nextId++,
+    title: req.body.title.trim(),
+    description: req.body.description.trim(),
+    requester: req.body.requester.trim(),
+    category: req.body.category,
+    priority: req.body.priority,
+    status: 'aberto',
+    createdAt: new Date().toISOString(),
   };
 
-  chamados.push(novoChamado);
-
-  return res.status(201).json(novoChamado);
+  tickets.push(novoTicket);
+  res.status(201).json(novoTicket);
 });
 
-// 5. ATUALIZAR CHAMADO EXISTENTE (PUT /chamados/:id)
-app.put('/chamados/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const index = chamados.findIndex((c) => c.id === id);
+// Atualizar chamado
+app.put('/api/tickets/:id', (req, res) => {
+  const index = tickets.findIndex((t) => t.id === Number(req.params.id));
 
   if (index === -1) {
-    return res.status(404).json({ erro: 'Chamado não encontrado.' });
+    return res.status(404).json({ message: 'Chamado não encontrado.' });
   }
 
-  const { titulo, descricao, solicitante, categoria, prioridade, situacao } = req.body;
-
-  const erros = validarDadosChamado(
-    { titulo, descricao, solicitante, categoria, prioridade, situacao },
-    true
-  );
-
-  if (erros.length > 0) {
-    return res.status(400).json({ erro: 'Dados inválidos.', detalhes: erros });
+  const erro = validarTicket(req.body, true);
+  if (erro) {
+    return res.status(400).json({ message: erro });
   }
 
-  // Preserva o id e a data de criação originais
-  const chamadoAtualizado = {
-    ...chamados[index],
-    titulo: titulo.trim(),
-    descricao: descricao.trim(),
-    solicitante: solicitante.trim(),
-    categoria: categoria.toLowerCase(),
-    prioridade: prioridade.toLowerCase(),
-    situacao: situacao.toLowerCase(),
+  tickets[index] = {
+    ...tickets[index],
+    title: req.body.title.trim(),
+    description: req.body.description.trim(),
+    requester: req.body.requester.trim(),
+    category: req.body.category,
+    priority: req.body.priority,
+    status: req.body.status,
   };
 
-  chamados[index] = chamadoAtualizado;
-
-  return res.status(200).json(chamadoAtualizado);
+  res.json(tickets[index]);
 });
 
-// 6. EXCLUIR CHAMADO (DELETE /chamados/:id)
-app.delete('/chamados/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const index = chamados.findIndex((c) => c.id === id);
+// Excluir chamado
+app.delete('/api/tickets/:id', (req, res) => {
+  const index = tickets.findIndex((t) => t.id === Number(req.params.id));
 
   if (index === -1) {
-    return res.status(404).json({ erro: 'Chamado não encontrado.' });
+    return res.status(404).json({ message: 'Chamado não encontrado.' });
   }
 
-  // Regra: exclusão permitida somente para chamados resolvidos
-  if (chamados[index].situacao !== 'resolvido') {
-    return res.status(400).json({
-      erro: 'Apenas chamados com situação "resolvido" podem ser excluídos.',
-    });
+  if (tickets[index].status !== 'resolvido') {
+    return res.status(400).json({ message: 'Apenas chamados resolvidos podem ser excluídos.' });
   }
 
-  chamados.splice(index, 1);
-
-  return res.status(200).json({ mensagem: 'Chamado excluído com sucesso.' });
+  tickets.splice(index, 1);
+  res.json({ message: 'Chamado excluído com sucesso.' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+app.listen(port, () => {
+  console.log(`Servidor rodando na porta ${port}`);
 });

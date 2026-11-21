@@ -1,4 +1,3 @@
-// Único ponto de comunicação com o backend. Não há dados simulados aqui.
 export const isDemo = false;
 const origin = (window.CAMPUS_API_URL || '').trim().replace(/\/$/, '');
 const BASE = origin + '/api';
