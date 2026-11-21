@@ -1,0 +1,16 @@
+{
+  "name": "Campus Desk \u2014 Node",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "forwardPorts": [
+    3333,
+    5173
+  ],
+  "portsAttributes": {
+    "3333": {
+      "label": "API Campus Desk"
+    },
+    "5173": {
+      "label": "Frontend de desenvolvimento"
+    }
+  }
+}
